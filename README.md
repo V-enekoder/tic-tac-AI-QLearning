@@ -36,7 +36,7 @@ Claro, aquí tienes la sección `## 🚀 Instalación y Ejecución` del `README.
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone <tu-repo-url>
+    git clone https://github.com/V-enekoder/tic-tac-AI.git
     cd agente-minimax-tictactoe
     ```
 
@@ -110,24 +110,4 @@ Claro, aquí tienes la sección `## 🚀 Instalación y Ejecución` del `README.
 **Causa:** Falló el `build` de la imagen, por lo que Podman intenta buscarla en internet y falla.
 **Solución:** Revisa los errores del Dockerfile y corre `podman-compose up -d --build` hasta que termine con éxito.
 ```
-
-
-proyecto1/
-└── src/
-    ├── __init__.py         # (Opcional pero buena práctica)
-    |
-    ├── ai/
-    │   ├── __init__.py     # Marca 'ai' como un paquete
-    │   └── minimax.py      # Aquí vivirá toda la lógica del algoritmo Minimax
-    |
-    ├── game_logic/
-    │   ├── __init__.py     # Marca 'game_logic' como un paquete
-    │   └── board.py        # Lógica del tablero: mover, verificar ganador, etc.
-    |
-    ├── gui/
-    │   ├── __init__.py     # Marca 'gui' como un paquete
-    │   └── renderer.py     # Funciones para dibujar el tablero, las X/O, botones, etc.
-    |
-    ├── config.py           # Constantes: colores, tamaños de ventana, etc.
-    |
     └── main.py             # El director de orquesta
