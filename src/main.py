@@ -5,7 +5,10 @@ from enum import Enum
 import pygame
 
 # Asumiendo que estos módulos existen según tu código original
-from src.ai.minimax import find_best_move_alpha_beta, find_best_move_bruteforce
+from src.ai.minimax import (
+    find_best_move_and_viz,
+    get_focused_tree,
+)
 from src.config import *
 from src.game_logic.board import Board
 from src.gui.renderer import Renderer
@@ -26,24 +29,20 @@ class PlayerType:
 
 class GameController:
     def __init__(self):
-        # Inicialización de Pygame
         pygame.display.init()
         pygame.font.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Comparador de IA: Minimax vs Alfa-Beta")
         self.clock = pygame.time.Clock()
 
-        # Componentes del juego
         self.board = Board()
         self.renderer = Renderer(self.screen)
 
-        # Estado inicial
         self.state = GameState.MENU
         self.running = True
 
-        # Variables de configuración de partida
         self.player_types = [PlayerType.HUMAN, PlayerType.HUMAN]
-        self.ai_speed_selected = None  # Temp variable para el submenú
+        self.ai_speed_selected = None
         self.last_graph_data = []
         self.waiting_for_step = False
 
@@ -52,7 +51,7 @@ class GameController:
             "Humano vs Humano",
             "Humano vs IA (Lenta - Minimax)",
             "Humano vs IA (Rápida - AlfaBeta)",
-            # "IA Lenta vs IA Rápida (¡Observa!)"
+            "IA Lenta vs IA Rápida",
         ]
         self.menu_selection = 0
 
@@ -72,7 +71,6 @@ class GameController:
         pygame.quit()
         sys.exit()
 
-    # --- Manejo de Eventos ---
     def handle_events(self):
         events = pygame.event.get()
         for event in events:
@@ -94,7 +92,6 @@ class GameController:
         selection_attr = "menu_selection" if is_main_menu else "start_selection"
         current_selection = getattr(self, selection_attr)
 
-        # Teclado
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
                 setattr(
@@ -112,7 +109,6 @@ class GameController:
             elif event.key == pygame.K_ESCAPE and not is_main_menu:
                 self.state = GameState.MENU
 
-        # Mouse
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_pos = pygame.mouse.get_pos()
             for i, rect in enumerate(self.menu_rects):
@@ -124,7 +120,6 @@ class GameController:
                         self._confirm_ai_selection()
                     break
 
-        # Actualizar selección visual con hover del mouse (opcional pero mejora UX)
         mouse_pos = pygame.mouse.get_pos()
         for i, rect in enumerate(self.menu_rects):
             if rect.collidepoint(mouse_pos):
@@ -141,7 +136,7 @@ class GameController:
             self.ai_speed_selected = PlayerType.AI_FAST
             self.state = GameState.AI_SELECTION
         elif sel == 3:  # IA v IA
-            self.start_game([PlayerType.AI_SLOW, PlayerType.AI_FAST])
+            self.start_game([PlayerType.AI_FAST, PlayerType.AI_SLOW])
 
     def _confirm_ai_selection(self):
         p1 = PlayerType.HUMAN
@@ -168,7 +163,6 @@ class GameController:
 
     def _process_human_click(self, pos):
         mouseX, mouseY = pos
-        # Validación de zona de clic
         if (
             self.renderer.board_offset_x
             <= mouseX
@@ -181,19 +175,16 @@ class GameController:
             if 0 <= clicked_row < BOARD_ROWS and 0 <= clicked_col < BOARD_COLS:
                 self.board.make_move(clicked_row, clicked_col)
 
-    # --- Lógica de Actualización (Update) ---
     def update(self):
         if self.state == GameState.PLAYING:
             self._update_game_logic()
 
     def _update_game_logic(self):
-        # Verificar pausa por paso a paso (AI vs AI)
         if self.waiting_for_step:
             return
 
         current_player = self.player_types[self.board.turn - 1]
 
-        # Si es turno de IA y el juego no ha terminado
         if not self.board.game_over and current_player in [
             PlayerType.AI_SLOW,
             PlayerType.AI_FAST,
@@ -201,30 +192,26 @@ class GameController:
             self._execute_ai_turn(current_player)
 
     def _execute_ai_turn(self, ai_type):
-        # Pequeño hack para forzar redibujado antes de cálculo pesado
-        # para que se vea la pantalla actualizada antes de que la IA piense
         self.draw()
-
         start_time = time.time()
-        move = None
 
-        print(f"Turno {self.board.turn} ({ai_type}): Calculando...")
+        print(f"Turno {self.board.turn} ({ai_type}): Pensando...")
 
-        if ai_type == PlayerType.AI_SLOW:
-            move, self.last_graph_data = find_best_move_bruteforce(self.board)
-        elif ai_type == PlayerType.AI_FAST:
-            move, self.last_graph_data = find_best_move_alpha_beta(self.board)
+        use_alpha_beta = ai_type == PlayerType.AI_FAST
 
-        print(f"Cálculo: {time.time() - start_time:.4f}s")
+        move, tree_data = find_best_move_and_viz(
+            self.board, use_alpha_beta=use_alpha_beta
+        )
+
+        self.last_graph_data = tree_data
+
+        print(f"Cálculo completado en: {time.time() - start_time:.4f}s")
 
         if move:
             self.board.make_move(move[0], move[1])
-
-            # Si es IA vs IA, activar pausa
             if self.player_types == [PlayerType.AI_SLOW, PlayerType.AI_FAST]:
                 self.waiting_for_step = True
 
-    # --- Dibujado (Render) ---
     def draw(self):
         if self.state == GameState.MENU:
             self.menu_rects = self.renderer.draw_menu(
@@ -242,7 +229,6 @@ class GameController:
         pygame.display.update()
 
     def _draw_game_screen(self):
-        # Configurar renderer
         is_h_vs_h = self.player_types == [PlayerType.HUMAN, PlayerType.HUMAN]
         self.renderer.set_centered(is_h_vs_h)
 
@@ -253,27 +239,22 @@ class GameController:
         )
         self.renderer.set_inverted(should_invert)
 
-        # Dibujar elementos
         self.renderer.draw_grid()
         self.renderer.draw_symbols(self.board.board)
         self.renderer.draw_decision_graph(self.last_graph_data)
 
-        # Indicador de turno
         real_current_player = self.player_types[self.board.turn - 1]
         label = "HUMAN" if real_current_player == PlayerType.HUMAN else "IA"
         self.renderer.draw_turn_indicator(self.board.turn, label)
 
-        # Ghost Symbol (Hover)
         current_player = self.player_types[self.board.turn - 1]
         if not self.board.game_over and current_player == PlayerType.HUMAN:
             self._draw_ghost_symbol()
 
-        # Game Over
         if self.board.game_over:
             self.renderer.draw_win_line(self.board)
             self.renderer.draw_game_over_text(self.board)
 
-        # Prompt "Presiona Enter" para AI vs AI
         if self.waiting_for_step:
             self._draw_step_prompt()
 
@@ -302,7 +283,6 @@ class GameController:
         pygame.draw.rect(self.screen, (0, 0, 0), bg)
         self.screen.blit(prompt, rect)
 
-    # --- Helpers ---
     def start_game(self, players):
         self.player_types = players
         self.state = GameState.PLAYING

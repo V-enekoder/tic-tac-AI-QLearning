@@ -1,5 +1,5 @@
-from typing import List
 import math
+from typing import List
 
 import pygame
 
@@ -12,12 +12,12 @@ class Renderer:
         self.font: pygame.font.Font = pygame.font.Font(None, 45)
         self.menu_font: pygame.font.Font = pygame.font.Font(None, MENU_FONT_SIZE)
 
-        # Offsets Dinámicos 
+        # Offsets Dinámicos
         self.board_offset_x = BOARD_OFFSET_X
         self.board_offset_y = BOARD_OFFSET_Y
-        
+
         self.inverted_symbols = False
-    
+
     def set_inverted(self, inverted: bool):
         """Si es True, Jugador 1 dibuja O (Círculo) y Jugador 2 dibuja X (Cruz)."""
         self.inverted_symbols = inverted
@@ -54,7 +54,7 @@ class Renderer:
                 color = MENU_SELECTED_COLOR
                 text_content = f">  {option}  <"
             else:
-                color = (180, 180, 180)  
+                color = (180, 180, 180)
                 text_content = option
 
             text = self.font.render(text_content, True, color)
@@ -77,18 +77,20 @@ class Renderer:
 
     def draw_turn_indicator(self, turn: int, player_type: str):
         """Dibuja quién está jugando en la parte superior."""
-        
-        is_x = (turn == 1 and not self.inverted_symbols) or (turn == 2 and self.inverted_symbols)
+
+        is_x = (turn == 1 and not self.inverted_symbols) or (
+            turn == 2 and self.inverted_symbols
+        )
         symbol_str = "X" if is_x else "O"
-        
+
         # Color based on symbol
         color_rgb = CROSS_COLOR if is_x else CIRCLE_COLOR
-        
+
         if player_type == "HUMAN":
             text_str = f"Turno del Humano ({symbol_str})"
         else:
             text_str = f"Turno de la IA ({symbol_str})"
-        
+
         text = self.font.render(text_str, True, color_rgb)
         center_x = self.board_offset_x + BOARD_WIDTH // 2
         text_rect = text.get_rect(center=(center_x, BOARD_OFFSET_Y // 2))
@@ -102,9 +104,9 @@ class Renderer:
         # Crear superficie temporal con transparencia
         ghost_surf = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE), pygame.SRCALPHA)
 
-        alpha = 100 
+        alpha = 100
 
-        if turn == 1:  
+        if turn == 1:
             if self.inverted_symbols:
                 color = (*CIRCLE_COLOR, alpha)
                 radius = CIRCLE_RADIUS
@@ -184,12 +186,15 @@ class Renderer:
                 center_x = col * SQUARE_SIZE + SQUARE_SIZE // 2 + self.board_offset_x
                 center_y = row * SQUARE_SIZE + SQUARE_SIZE // 2 + BOARD_OFFSET_Y
 
-                
-                is_p1 = (board_array[row][col] == 1)
-                is_p2 = (board_array[row][col] == 2)
-                
-                draw_x = (is_p1 and not self.inverted_symbols) or (is_p2 and self.inverted_symbols)
-                draw_o = (is_p2 and not self.inverted_symbols) or (is_p1 and self.inverted_symbols)
+                is_p1 = board_array[row][col] == 1
+                is_p2 = board_array[row][col] == 2
+
+                draw_x = (is_p1 and not self.inverted_symbols) or (
+                    is_p2 and self.inverted_symbols
+                )
+                draw_o = (is_p2 and not self.inverted_symbols) or (
+                    is_p1 and self.inverted_symbols
+                )
 
                 if draw_x:
                     margin = SQUARE_SIZE // 4
@@ -243,9 +248,9 @@ class Renderer:
         # Efecto Neon Glow
         # Dibujamos varias líneas con distinta transparencia y grosor
         glow_colors = [
-            (*WIN_LINE_COLOR, 50),  
-            (*WIN_LINE_COLOR, 100), 
-            (*WIN_LINE_COLOR, 255),  
+            (*WIN_LINE_COLOR, 50),
+            (*WIN_LINE_COLOR, 100),
+            (*WIN_LINE_COLOR, 255),
         ]
         widths = [LINE_WIDTH + 15, LINE_WIDTH + 5, LINE_WIDTH]
 
@@ -322,72 +327,110 @@ class Renderer:
                     )
                     self.screen.blit(text, text_rect)
 
-    def draw_decision_graph(self, graph_data: List[dict]):
-        """Dibuja el grafo de decisiones usando mini tableros."""
-        if not graph_data:
+    def draw_decision_graph(self, root_node):
+        if not root_node:
             return
 
-        # Área del grafo: x = BOARD_WIDTH + OFFSET_X + MARGIN a WIDTH
-        graph_start_x = BOARD_WIDTH + BOARD_OFFSET_X
-        area_width = WIDTH - graph_start_x
-        center_x = graph_start_x + area_width // 2
+        board_end_x = self.board_offset_x + BOARD_WIDTH
+        screen_width = self.screen.get_width()
+        available_width = screen_width - board_end_x
 
-        # Tamaño de los mini tableros
-        mini_size = 50
+        panel_center_x = board_end_x + (available_width // 2)
 
-        # Nodo raíz (Estado actual - texto)
-        root_x = center_x - mini_size // 2
-        root_y = 50
+        start_y = 30
 
-        # Etiqueta Start
-        root_label = self.font.render("Start", True, TEXT_COLOR)
-        root_label_rect = root_label.get_rect(center=(center_x, 30))
-        self.screen.blit(root_label, root_label_rect)
+        self.draw_mini_board(
+            panel_center_x - 15, start_y, 30, root_node["board_matrix"]
+        )
 
-        # No tenemos el estado del tablero raíz pasado explícitamente aquí,
-        # así que dibujaremos un círculo o caja como "Raíz" simbólica
-        root_pos = (center_x, root_y + mini_size // 2)
-        pygame.draw.circle(self.screen, NODE_COLOR, root_pos, 10)
+        self._draw_cascade_level(root_node, panel_center_x, start_y + 40)
 
-        # Dibujar hijos (movimientos evaluados)
-        num_children = len(graph_data)
-        if num_children == 0:
+    def _draw_cascade_level(self, parent_node, parent_x, y):
+        children = parent_node.get("children", [])
+        if not children:
             return
 
-        # Layout Grid para los hijos
-        cols = 3
-        rows = math.ceil(num_children / cols)
+        count = len(children)
 
-        start_y = 150
-        spacing_x = area_width // cols
-        spacing_y = 100
+        mini_size = 24
 
-        for i, node in enumerate(graph_data):
-            row = i // cols
-            col = i % cols
+        if count >= 5:
+            gap = 28
+        else:
+            gap = 40
 
-            child_x = graph_start_x + (col * spacing_x) + (spacing_x - mini_size) // 2
-            child_y = start_y + (row * spacing_y)
+        chosen_index = -1
+        for i, child in enumerate(children):
+            if child.get("children") or child.get("is_chosen"):
+                chosen_index = i
+                break
 
-            # Línea desde raíz
-            child_center = (child_x + mini_size // 2, child_y)
-            pygame.draw.line(self.screen, LINE_COLOR, root_pos, child_center, 1)
+        if chosen_index != -1:
+            start_x = parent_x - (chosen_index * gap)
+        else:
+            total_row_width = (count - 1) * gap
+            start_x = parent_x - (total_row_width / 2)
 
-            # Dibujar Mini Tablero
-            if "board" in node:
-                self.draw_mini_board(child_x, child_y, mini_size, node["board"])
+        chosen_child = None
+        chosen_child_x = 0
 
-            # Score
-            score = node["score"]
-            score_color = (
-                POSITIVE_COLOR
-                if score > 0
-                else (NEGATIVE_COLOR if score < 0 else NEUTRAL_COLOR)
+        for i, child in enumerate(children):
+            current_x = start_x + (i * gap)
+
+            score = child["score"]
+            if score > 0:
+                color = (0, 255, 0)  # Verde
+            elif score < 0:
+                color = (255, 0, 0)  # Rojo
+            else:
+                color = (150, 150, 150)  # Gris
+
+            is_chosen = i == chosen_index
+
+            line_width = 3 if is_chosen else 1
+            line_color = (255, 255, 0) if is_chosen else (60, 60, 60)
+
+            # Dibujar línea al padre
+            pygame.draw.line(
+                self.screen,
+                line_color,
+                (parent_x, y - 10),
+                (current_x, y + 10),
+                line_width,
             )
 
-            font_small = pygame.font.Font(None, 24)
-            score_text = font_small.render(f"Val: {score}", True, score_color)
-            score_rect = score_text.get_rect(
-                center=(child_x + mini_size // 2, child_y + mini_size + 15)
+            self.draw_mini_board(
+                current_x - (mini_size // 2), y + 10, mini_size, child["board_matrix"]
             )
-            self.screen.blit(score_text, score_rect)
+
+            if is_chosen:
+                rect = pygame.Rect(
+                    current_x - (mini_size // 2) - 2,
+                    y + 10 - 2,
+                    mini_size + 4,
+                    mini_size + 4,
+                )
+                pygame.draw.rect(self.screen, (255, 255, 0), rect, 2)
+            else:
+                rect = pygame.Rect(
+                    current_x - (mini_size // 2) - 1,
+                    y + 10 - 1,
+                    mini_size + 2,
+                    mini_size + 2,
+                )
+                pygame.draw.rect(self.screen, color, rect, 1)
+
+            if is_chosen or count < 6:
+                font = pygame.font.Font(None, 16)
+                score_txt = font.render(
+                    str(score), True, (255, 255, 255) if is_chosen else color
+                )
+                txt_rect = score_txt.get_rect(center=(current_x, y + mini_size + 15))
+                self.screen.blit(score_txt, txt_rect)
+
+            if is_chosen:
+                chosen_child = child
+                chosen_child_x = current_x
+
+        if chosen_child:
+            self._draw_cascade_level(chosen_child, chosen_child_x, y + 70)

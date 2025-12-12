@@ -1,5 +1,3 @@
-# src/ai/minimax.py
-
 import math
 from copy import deepcopy
 from typing import Dict, List, Tuple
@@ -57,7 +55,7 @@ def minimax_alpha_beta(
     beta: float,
     is_maximizing: bool,
     counter: Dict[str, int],
-    maximizing_player_id: int,  # <--- Nuevo argumento
+    maximizing_player_id: int,
 ) -> int:
     counter["nodes"] += 1
 
@@ -156,6 +154,113 @@ def find_best_move_alpha_beta(board: Board) -> Tuple[Tuple[int, int], List[dict]
     return best_move, graph_data
 
 
+def get_focused_tree(
+    board: Board, ai_player_id: int, scoring_function, current_depth=0, max_viz_depth=3
+):
+    if board.game_over or current_depth >= max_viz_depth:
+        score = 0
+        if board.winner == ai_player_id:
+            score = 1
+        elif board.winner is not None:
+            score = -1
+        return {
+            "score": score,
+            "board_matrix": board.board.tolist(),
+            "children": [],
+            "move": None,
+        }
+
+    is_maximizing = board.turn == ai_player_id
+    candidates = []
+    moves = board.get_available_moves()
+
+    if not moves:
+        return {
+            "score": 0,
+            "board_matrix": board.board.tolist(),
+            "children": [],
+            "move": None,
+        }
+
+    for move in moves:
+        temp_board = deepcopy(board)
+        temp_board.make_move(move[0], move[1])
+
+        if scoring_function.__name__ == "minimax_bruteforce":
+            score = scoring_function(
+                temp_board, 0, not is_maximizing, {"nodes": 0}, ai_player_id
+            )
+        else:
+            score = scoring_function(
+                temp_board,
+                0,
+                -math.inf,
+                math.inf,
+                not is_maximizing,
+                {"nodes": 0},
+                ai_player_id,
+            )
+
+        candidates.append({"move": move, "score": score, "board": temp_board})
+
+    # Elegir mejor
+    if is_maximizing:
+        best_candidate = max(candidates, key=lambda x: x["score"])
+    else:
+        best_candidate = min(candidates, key=lambda x: x["score"])
+
+    # Nodo actual
+    node = {
+        "score": best_candidate["score"],
+        "board_matrix": board.board.tolist(),
+        "children": [],
+        "best_move_coordinate": best_candidate["move"],
+    }
+
+    for cand in candidates:
+        is_best_path = cand["move"] == best_candidate["move"]
+
+        if is_best_path:
+            child_node = get_focused_tree(
+                cand["board"],
+                ai_player_id,
+                scoring_function,
+                current_depth + 1,
+                max_viz_depth,
+            )
+            child_node["score"] = cand["score"]
+            child_node["is_chosen"] = True
+            child_node["move"] = cand["move"]
+            node["children"].append(child_node)
+        else:
+            leaf_node = {
+                "score": cand["score"],
+                "board_matrix": cand["board"].board.tolist(),
+                "children": [],
+                "is_chosen": False,
+                "move": cand["move"],
+            }
+            node["children"].append(leaf_node)
+
+    return node
+
+
+def find_best_move_and_viz(board: Board, use_alpha_beta: bool):
+    """
+    Calcula el mejor movimiento y genera el árbol visual.
+    Retorna: (best_move, tree_root_node)
+    """
+    ai_player_id = board.turn
+
+    scoring_func = minimax_alpha_beta if use_alpha_beta else minimax_bruteforce
+
+    root_node = get_focused_tree(board, ai_player_id, scoring_func, max_viz_depth=3)
+
+    best_move = root_node.get("best_move_coordinate")
+
+    return best_move, root_node
+
+
 def get_simulation_move_bruteforce(board: Board) -> Tuple[Tuple[int, int], int]:
     """Retorna (mejor_movimiento, total_nodos_evaluados) para la simulación."""
 
@@ -186,8 +291,7 @@ def get_simulation_move_bruteforce(board: Board) -> Tuple[Tuple[int, int], int]:
 
 def get_simulation_move_alpha_beta(board: Board) -> Tuple[Tuple[int, int], int]:
     """
-    Realiza una búsqueda unificada con poda Alfa-Beta.
-    Retorna (mejor_movimiento, total_nodos_evaluados).
+    Retorna (mejor_movimiento, total_nodos_evaluados). Para la simulación
     """
 
     ai_player_id = board.turn
