@@ -316,7 +316,11 @@ class Renderer:
             for c in range(3):
                 val = board_state[r][c]
                 if val != 0:
-                    symbol = "X" if val == 1 else "O"
+                    if self.inverted_symbols:
+                        symbol = "O" if val == 1 else "X"
+                    else:
+                        symbol = "X" if val == 1 else "O"
+
                     color = (0, 0, 0)
                     text = font_mini.render(symbol, True, color)
                     text_rect = text.get_rect(
@@ -327,50 +331,189 @@ class Renderer:
                     )
                     self.screen.blit(text, text_rect)
 
-    def draw_decision_graph(self, root_node):
-        if not root_node:
-            return
+    def _get_tree_depth(self, node):
+        """Calcula la profundidad máxima visual del árbol actual."""
+        if not node:
+            return 0
 
+        max_depth = 0
+        children = node.get("children", [])
+
+        # Solo necesitamos seguir el camino 'elegido' o el más largo
+        # ya que el árbol visual es asimétrico (cascada)
+        for child in children:
+            # Si el hijo tiene hijos o es el elegido, profundizamos
+            if child.get("children") or child.get("is_chosen"):
+                d = 1 + self._get_tree_depth(child)
+                if d > max_depth:
+                    max_depth = d
+
+        return max_depth
+
+    def draw_legend(self, center_x, y):
+        """Dibuja una pequeña leyenda explicando los colores."""
+        font = pygame.font.Font(None, 20)
+
+        # Definición de items de la leyenda
+        items = [
+            ("Ganar", (0, 255, 0)),
+            ("Empate", (200, 200, 200)),
+            ("Perder", (255, 0, 0)),
+            ("Ruta Elegida", (255, 255, 0)),
+        ]
+
+        # Calcular ancho total para centrar
+        total_width = 0
+        spacings = []
+        for text, _ in items:
+            w = font.size(text)[0] + 15  # 15px para la bolita y margen
+            spacings.append(w)
+            total_width += w + 20  # 20px entre items
+
+        start_x = center_x - (total_width // 2)
+        current_x = start_x
+
+        for (text, color), w in zip(items, spacings):
+            # Dibujar bolita/cuadro
+            pygame.draw.rect(self.screen, color, (current_x, y, 10, 10))
+
+            # Dibujar texto
+            txt_surf = font.render(text, True, (220, 220, 220))
+            self.screen.blit(txt_surf, (current_x + 15, y - 2))
+
+            current_x += w + 20
+
+    def draw_decision_graph(self, root_node):
+        # --- 0. Configuración del Espacio ---
         board_end_x = self.board_offset_x + BOARD_WIDTH
         screen_width = self.screen.get_width()
         available_width = screen_width - board_end_x
 
+        # Si no hay espacio (ventana muy chica), no dibujamos
+        if available_width < 50:
+            return
+
         panel_center_x = board_end_x + (available_width // 2)
 
-        start_y = 30
+        # --- 1. Fondo del Panel (Mejora Visual) ---
+        # Un fondo oscuro semitransparente para separar zonas
+        panel_rect = pygame.Rect(board_end_x, 0, available_width, HEIGHT)
 
-        self.draw_mini_board(
-            panel_center_x - 15, start_y, 30, root_node["board_matrix"]
+        # Dibuja un fondo solido oscuro (estilo panel de control)
+        pygame.draw.rect(self.screen, (30, 30, 40), panel_rect)
+
+        # Línea divisoria vertical neón
+        pygame.draw.line(
+            self.screen, (100, 100, 150), (board_end_x, 0), (board_end_x, HEIGHT), 2
         )
 
-        self._draw_cascade_level(root_node, panel_center_x, start_y + 40)
+        if not root_node:
+            # Mensaje de espera si no hay datos
+            font = pygame.font.Font(None, 30)
+            text = font.render("Esperando turno de IA...", True, (100, 100, 100))
+            self.screen.blit(text, text.get_rect(center=(panel_center_x, HEIGHT // 2)))
+            return
 
-    def _draw_cascade_level(self, parent_node, parent_x, y):
+        # --- 2. Título (Mejora Visual) ---
+        font_title = pygame.font.Font(None, 36)
+        title_surf = font_title.render("Grafo Explorado", True, (255, 255, 255))
+        title_rect = title_surf.get_rect(center=(panel_center_x, 30))
+        self.screen.blit(title_surf, title_rect)
+
+        # --- 3. Leyenda (Mejora Visual) ---
+        self.draw_legend(panel_center_x, 60)
+
+        # --- 4. Cálculo de Altura Dinámica ---
+        depth = self._get_tree_depth(root_node)
+
+        # Ajustamos margenes considerando el título y leyenda
+        margin_top = 100
+        margin_bottom = 20
+        available_height = HEIGHT - margin_top - margin_bottom
+
+        if depth > 0:
+            vertical_step = available_height / (depth + 1)
+        else:
+            vertical_step = 100
+
+        vertical_step = max(60, min(vertical_step, 140))
+
+        # --- 5. Dibujar Árbol ---
+        start_y = margin_top
+
+        # Raíz
+        mini_size_root = 32
+        self.draw_mini_board(
+            panel_center_x - (mini_size_root / 2),
+            start_y,
+            mini_size_root,
+            root_node["board_matrix"],
+        )
+
+        # Cascada
+        self._draw_cascade_level(
+            root_node, panel_center_x, start_y + vertical_step, vertical_step
+        )
+
+    def _draw_cascade_level(self, parent_node, parent_x, y, vertical_step):
         children = parent_node.get("children", [])
         if not children:
             return
 
         count = len(children)
+        mini_size = 28  # Tamaño balanceado
 
-        mini_size = 24
+        # --- 1. Calcular Límites de la Pantalla ---
+        # Definimos el área donde PUEDE dibujarse el árbol
+        start_bound_x = (
+            self.board_offset_x + BOARD_WIDTH + 10
+        )  # Margen izq (junto al tablero)
+        end_bound_x = self.screen.get_width() - 10  # Margen der (borde ventana)
+        available_width = end_bound_x - start_bound_x
 
-        if count >= 5:
-            gap = 28
+        # --- 2. Calcular Gap Dinámico (Compresión) ---
+        # Si los tableros no caben con un gap normal, los apretamos
+        max_gap = 45
+        min_gap = mini_size + 2  # Lo mínimo para que no se superpongan
+
+        # Ancho necesario si usamos el gap máximo
+        ideal_width = count * max_gap
+
+        if ideal_width > available_width:
+            # Si no caben, reducimos el gap al tamaño exacto que cabe
+            gap = max(min_gap, available_width / count)
         else:
-            gap = 40
+            gap = max_gap
 
+        # --- 3. Calcular Posición Ideal (Alineación con el Padre) ---
         chosen_index = -1
         for i, child in enumerate(children):
             if child.get("children") or child.get("is_chosen"):
                 chosen_index = i
                 break
 
+        # Ancho total real de esta fila
+        total_row_width = (count - 1) * gap
+
         if chosen_index != -1:
+            # Intentamos poner el inicio donde el elegido coincida con el padre
             start_x = parent_x - (chosen_index * gap)
         else:
-            total_row_width = (count - 1) * gap
+            # Si no hay elegido, centramos respecto al padre
             start_x = parent_x - (total_row_width / 2)
 
+        # --- 4. APLICAR TOPES (CLAMPING) - LA SOLUCIÓN AL PROBLEMA ---
+        # Si el inicio de la fila se sale por la izquierda, lo pegamos al borde izquierdo
+        if start_x < start_bound_x + (mini_size / 2):
+            start_x = start_bound_x + (mini_size / 2)
+
+        # Si el final de la fila se sale por la derecha, lo empujamos hacia atrás
+        row_end_x = start_x + total_row_width
+        if row_end_x > end_bound_x - (mini_size / 2):
+            diff = row_end_x - (end_bound_x - (mini_size / 2))
+            start_x -= diff  # Corregimos el inicio hacia la izquierda
+
+        # --- 5. Dibujar ---
         chosen_child = None
         chosen_child_x = 0
 
@@ -379,34 +522,48 @@ class Renderer:
 
             score = child["score"]
             if score > 0:
-                color = (0, 255, 0)  # Verde
+                color = (0, 255, 0)
             elif score < 0:
-                color = (255, 0, 0)  # Rojo
+                color = (255, 0, 0)
             else:
-                color = (150, 150, 150)  # Gris
+                color = (150, 150, 150)
 
             is_chosen = i == chosen_index
 
-            line_width = 3 if is_chosen else 1
-            line_color = (255, 255, 0) if is_chosen else (60, 60, 60)
+            line_color = (255, 255, 0) if is_chosen else (100, 100, 100)
 
-            # Dibujar línea al padre
-            pygame.draw.line(
-                self.screen,
-                line_color,
-                (parent_x, y - 10),
-                (current_x, y + 10),
-                line_width,
-            )
+            # CALCULO DE COORDENADAS
+            # parent_x: Centro X del padre
+            # y - vertical_step: Centro Y del padre
+            # + (mini_size // 2): Borde inferior del padre
+            # + 10: Offset extra para separarse del padre
+            start_pos = (parent_x, int(y - vertical_step + (mini_size // 2) + 10))
 
+            # Parte superior del hijo actual
+            end_pos = (current_x, int(y - (mini_size // 2)))
+
+            # DIBUJADO DE LÍNEAS (SOLO UNA VEZ POR HIJO)
+            if is_chosen:
+                # Línea gruesa para el elegido
+                pygame.draw.line(self.screen, line_color, start_pos, end_pos, 3)
+            else:
+                # Línea fina suavizada para el resto
+                pygame.draw.aaline(self.screen, line_color, start_pos, end_pos)
+
+            # DIBUJAR MINI TABLERO
             self.draw_mini_board(
-                current_x - (mini_size // 2), y + 10, mini_size, child["board_matrix"]
+                current_x - (mini_size // 2),
+                y - (mini_size // 2),
+                mini_size,
+                child["board_matrix"],
             )
 
+            # BORDES Y SCORE
+            # (El resto de tu código de bordes y texto sigue igual aquí...)
             if is_chosen:
                 rect = pygame.Rect(
                     current_x - (mini_size // 2) - 2,
-                    y + 10 - 2,
+                    y - (mini_size // 2) - 2,
                     mini_size + 4,
                     mini_size + 4,
                 )
@@ -414,23 +571,27 @@ class Renderer:
             else:
                 rect = pygame.Rect(
                     current_x - (mini_size // 2) - 1,
-                    y + 10 - 1,
+                    y - (mini_size // 2) - 1,
                     mini_size + 2,
                     mini_size + 2,
                 )
                 pygame.draw.rect(self.screen, color, rect, 1)
 
-            if is_chosen or count < 6:
-                font = pygame.font.Font(None, 16)
+            if is_chosen or gap > 35:
+                font = pygame.font.Font(None, 18)
                 score_txt = font.render(
                     str(score), True, (255, 255, 255) if is_chosen else color
                 )
-                txt_rect = score_txt.get_rect(center=(current_x, y + mini_size + 15))
+                txt_rect = score_txt.get_rect(
+                    center=(current_x, y + (mini_size // 2) + 12)
+                )
                 self.screen.blit(score_txt, txt_rect)
 
             if is_chosen:
                 chosen_child = child
                 chosen_child_x = current_x
-
+        # Recursividad
         if chosen_child:
-            self._draw_cascade_level(chosen_child, chosen_child_x, y + 70)
+            self._draw_cascade_level(
+                chosen_child, chosen_child_x, y + vertical_step, vertical_step
+            )

@@ -4,10 +4,8 @@ from enum import Enum
 
 import pygame
 
-# Asumiendo que estos módulos existen según tu código original
 from src.ai.minimax import (
     find_best_move_and_viz,
-    get_focused_tree,
 )
 from src.config import *
 from src.game_logic.board import Board
@@ -142,9 +140,9 @@ class GameController:
         p1 = PlayerType.HUMAN
         p2 = self.ai_speed_selected
 
-        if self.start_selection == 0:  # Humano inicia
+        if self.start_selection == 0:
             self.start_game([p1, p2])
-        else:  # IA inicia
+        else:
             self.start_game([p2, p1])
 
     def _handle_playing_input(self, event):
@@ -209,7 +207,11 @@ class GameController:
 
         if move:
             self.board.make_move(move[0], move[1])
-            if self.player_types == [PlayerType.AI_SLOW, PlayerType.AI_FAST]:
+
+            is_p1_ai = self.player_types[0] in [PlayerType.AI_SLOW, PlayerType.AI_FAST]
+            is_p2_ai = self.player_types[1] in [PlayerType.AI_SLOW, PlayerType.AI_FAST]
+
+            if is_p1_ai and is_p2_ai:
                 self.waiting_for_step = True
 
     def draw(self):
@@ -274,13 +276,13 @@ class GameController:
                     self.renderer.draw_ghost_symbol(row, col, self.board.turn)
 
     def _draw_step_prompt(self):
-        font = pygame.font.Font(None, 40)
+        font = pygame.font.Font(None, 30)
         prompt = font.render(
-            "Presiona ENTER para siguiente jugada...", True, (255, 255, 0)
+            "Presione ENTER para siguiente jugada...", True, CIRCLE_COLOR
         )
-        rect = prompt.get_rect(center=(WIDTH // 2, HEIGHT - 50))
+        rect = prompt.get_rect(center=(WIDTH // 3.25, HEIGHT - 25))
         bg = rect.inflate(20, 10)
-        pygame.draw.rect(self.screen, (0, 0, 0), bg)
+        pygame.draw.rect(self.screen, BG_COLOR, bg)
         self.screen.blit(prompt, rect)
 
     def start_game(self, players):
