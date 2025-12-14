@@ -1,0 +1,16 @@
+# .gitignore
+__pycache__/
+*.pyc
+.venv/
+.env
+.vscode/
+.idea/
+dist/
+build/
+*.spec
+.cache/
+.config/
+.local/
+.jupyter/
+.ipython/
+queries/
