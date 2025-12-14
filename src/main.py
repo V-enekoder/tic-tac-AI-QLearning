@@ -77,14 +77,10 @@ class GameController:
                 return
 
             if self.state == GameState.MENU:
-                self._handle_menu_input(
-                    event, self.menu_options, is_main_menu=True
-                )
+                self._handle_menu_input(event, self.menu_options, is_main_menu=True)
 
             elif self.state == GameState.AI_SELECTION:
-                self._handle_menu_input(
-                    event, self.start_options, is_main_menu=False
-                )
+                self._handle_menu_input(event, self.start_options, is_main_menu=False)
 
             elif self.state == GameState.PLAYING:
                 self._handle_playing_input(event)
@@ -170,9 +166,7 @@ class GameController:
     def _process_human_click(self, pos):
         mouseX, mouseY = pos
         if (
-            self.renderer.board_offset_x
-            <= mouseX
-            < self.renderer.board_offset_x + BOARD_WIDTH
+            self.renderer.board_offset_x <= mouseX < self.renderer.board_offset_x + BOARD_WIDTH
             and mouseY > BOARD_OFFSET_Y
         ):
             clicked_row = (mouseY - BOARD_OFFSET_Y) // SQUARE_SIZE
@@ -205,9 +199,7 @@ class GameController:
 
         use_alpha_beta = ai_type == PlayerType.AI_FAST
 
-        move, tree_data = find_best_move_and_viz(
-            self.board, use_alpha_beta=use_alpha_beta
-        )
+        move, tree_data = find_best_move_and_viz(self.board, use_alpha_beta=use_alpha_beta)
 
         self.last_graph_data = tree_data
 
@@ -230,14 +222,10 @@ class GameController:
 
     def draw(self):
         if self.state == GameState.MENU:
-            self.menu_rects = self.renderer.draw_menu(
-                self.menu_options, self.menu_selection
-            )
+            self.menu_rects = self.renderer.draw_menu(self.menu_options, self.menu_selection)
 
         elif self.state == GameState.AI_SELECTION:
-            self.menu_rects = self.renderer.draw_menu(
-                self.start_options, self.start_selection
-            )
+            self.menu_rects = self.renderer.draw_menu(self.start_options, self.start_selection)
 
         elif self.state == GameState.PLAYING:
             self._draw_game_screen()
@@ -278,9 +266,7 @@ class GameController:
         mouse_pos = pygame.mouse.get_pos()
         mouseX, mouseY = mouse_pos
         if (
-            self.renderer.board_offset_x
-            <= mouseX
-            < self.renderer.board_offset_x + BOARD_WIDTH
+            self.renderer.board_offset_x <= mouseX < self.renderer.board_offset_x + BOARD_WIDTH
             and mouseY > BOARD_OFFSET_Y
         ):
             row = (mouseY - BOARD_OFFSET_Y) // SQUARE_SIZE
@@ -291,9 +277,7 @@ class GameController:
 
     def _draw_step_prompt(self):
         font = pygame.font.Font(None, 30)
-        prompt = font.render(
-            "Presione ENTER para siguiente jugada...", True, CIRCLE_COLOR
-        )
+        prompt = font.render("Presione ENTER para siguiente jugada...", True, CIRCLE_COLOR)
         rect = prompt.get_rect(center=(WIDTH // 3.25, HEIGHT - 25))
         bg = rect.inflate(20, 10)
         pygame.draw.rect(self.screen, BG_COLOR, bg)

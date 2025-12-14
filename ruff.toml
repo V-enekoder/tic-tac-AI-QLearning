@@ -1,9 +1,8 @@
-# ruff.toml
+line-length = 120
 
-extend-exclude = ["queries"]
-
-line-length = 80
+extend-exclude = ["queries", "src/queries"]
 
 [lint]
-select = ["E", "F", "I"] # Pycodestyle, Pyflakes, Isort
-ignore = []
+select = ["E", "F", "I"]
+
+ignore = ["F403", "F405"]

@@ -13,9 +13,7 @@ from ai.minimax import (
 from game_logic.board import Board
 
 # --- CONFIGURACIÓN DEL EXPERIMENTO ---
-NUM_SIMULATIONS_PER_BATCH = (
-    10  # teorema del limite central tiende a dist normal
-)
+NUM_SIMULATIONS_PER_BATCH = 10  # teorema del limite central tiende a dist normal
 CSV_FILENAME = "queries/full_simulation_results.csv"
 
 # Tipos de jugadores para la simulación
@@ -45,9 +43,7 @@ def run_single_simulation(player1_type: str, player2_type: str) -> List[Dict]:
     turn_number = 1
 
     while not board.game_over:
-        current_player = (
-            player1_type if (turn_number % 2 != 0) else player2_type
-        )
+        current_player = player1_type if (turn_number % 2 != 0) else player2_type
 
         start_time = time.time()
         nodes_evaluated = 0
@@ -86,19 +82,13 @@ def main():
     }
 
     total_sims = len(experiment_batches) * NUM_SIMULATIONS_PER_BATCH
-    print(
-        f"Iniciando {total_sims} simulaciones en {len(experiment_batches)} lotes..."
-    )
+    print(f"Iniciando {total_sims} simulaciones en {len(experiment_batches)} lotes...")
     sim_counter = 0
     for batch_name, (p1, p2) in experiment_batches.items():
-        print(
-            f"\n--- Ejecutando Lote: {batch_name} ({NUM_SIMULATIONS_PER_BATCH} partidas) ---"
-        )
+        print(f"\n--- Ejecutando Lote: {batch_name} ({NUM_SIMULATIONS_PER_BATCH} partidas) ---")
         for i in range(NUM_SIMULATIONS_PER_BATCH):
             sim_counter += 1
-            print(
-                f"  - Simulando partida {sim_counter}/{total_sims}...", end="\r"
-            )
+            print(f"  - Simulando partida {sim_counter}/{total_sims}...", end="\r")
 
             results = run_single_simulation(p1, p2)
             for record in results:
@@ -107,9 +97,7 @@ def main():
                 all_results.append(record)
         print(f"\nLote {batch_name} completado.")
 
-    print(
-        f"\nSimulación finalizada. Guardando resultados en '{CSV_FILENAME}'..."
-    )
+    print(f"\nSimulación finalizada. Guardando resultados en '{CSV_FILENAME}'...")
     if all_results:
         with open(CSV_FILENAME, "w", newline="") as csvfile:
             fieldnames = all_results[0].keys()
