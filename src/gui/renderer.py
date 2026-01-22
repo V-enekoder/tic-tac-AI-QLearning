@@ -3,20 +3,29 @@ from typing import List
 import pygame
 
 from src.config import *
+from src.gui.components.board_component import BoardComponent
 from src.gui.shapes import ShapeDrawer
 
 
 class Renderer:
-    def __init__(self, screen: pygame.Surface) -> None:
-        self.screen: pygame.Surface = screen
-        self.font: pygame.font.Font = pygame.font.Font(None, 45)
-        self.menu_font: pygame.font.Font = pygame.font.Font(None, MENU_FONT_SIZE)
-
-        # Offsets Dinámicos
-        self.board_offset_x = BOARD_OFFSET_X
-        self.board_offset_y = BOARD_OFFSET_Y
+    def __init__(self, screen):
+        self.screen = screen
+        self.font = pygame.font.Font(None, 45)  # <--- ESTA FALTABA
+        self.menu_font = pygame.font.Font(None, MENU_FONT_SIZE)
 
         self.inverted_symbols = False
+
+        board_rect = pygame.Rect(0, 0, 400, 400)
+        board_rect.center = (WIDTH // 2, HEIGHT // 2)
+        self.board_view = BoardComponent(board_rect)
+
+        self.board_offset_x = self.board_view.rect.x
+        self.board_offset_y = self.board_view.rect.y
+
+    def draw(self, board_logic):
+        self.screen.fill(BG_COLOR)
+        self.board_view.draw_grid(self.screen)
+        self.board_view.draw_symbols(self.screen, board_logic.board)
 
     def set_inverted(self, inverted: bool):
         """Si es True, Jugador 1 dibuja O (Círculo) y Jugador 2 dibuja X (Cruz)."""
@@ -34,7 +43,6 @@ class Renderer:
 
         option_rects = []
 
-        # Título con sombra
         title_font = pygame.font.Font(None, 80)
         title_text = title_font.render("Tres en Raya", True, (0, 0, 0))  # Sombra negra
         title_rect = title_text.get_rect(center=(WIDTH // 2 + 4, HEIGHT // 4 + 4))
@@ -82,7 +90,6 @@ class Renderer:
         is_x = (turn == 1 and not self.inverted_symbols) or (turn == 2 and self.inverted_symbols)
         symbol_str = "X" if is_x else "O"
 
-        # Color based on symbol
         color_rgb = CROSS_COLOR if is_x else CIRCLE_COLOR
 
         if player_type == "HUMAN":
@@ -101,14 +108,15 @@ class Renderer:
         )
 
         ghost_surf = pygame.Surface((cell_rect.width, cell_rect.height), pygame.SRCALPHA)
-
         local_rect = pygame.Rect(0, 0, cell_rect.width, cell_rect.height)
 
-        color = (*CROSS_COLOR, 100) if turn == 1 else (*CIRCLE_COLOR, 100)
+        is_x = (turn == 1 and not self.inverted_symbols) or (turn == 2 and self.inverted_symbols)
 
-        if turn == 1:
+        if is_x:
+            color = (*CROSS_COLOR, 100)
             ShapeDrawer.draw_x(ghost_surf, local_rect, color)
         else:
+            color = (*CIRCLE_COLOR, 100)
             ShapeDrawer.draw_o(ghost_surf, local_rect, color)
 
         self.screen.blit(ghost_surf, cell_rect.topleft)
@@ -149,7 +157,6 @@ class Renderer:
     def draw_symbols(self, board_array):
         for row in range(BOARD_ROWS):
             for col in range(BOARD_COLS):
-                # 1. Creamos el Rect que representa esta celda
                 cell_rect = pygame.Rect(
                     col * SQUARE_SIZE + self.board_offset_x,
                     row * SQUARE_SIZE + BOARD_OFFSET_Y,
@@ -161,10 +168,8 @@ class Renderer:
                 if val == 0:
                     continue
 
-                # 2. Decidimos qué símbolo y color usar
                 is_x = (val == 1 and not self.inverted_symbols) or (val == 2 and self.inverted_symbols)
 
-                # 3. Llamada atómica
                 if is_x:
                     ShapeDrawer.draw_x(self.screen, cell_rect, CROSS_COLOR)
                 else:
@@ -321,7 +326,6 @@ class Renderer:
             current_x += w + 20
 
     def draw_decision_graph(self, root_node):
-        # --- 0. Configuración del Espacio ---
         board_end_x = self.board_offset_x + BOARD_WIDTH
         screen_width = self.screen.get_width()
         available_width = screen_width - board_end_x
