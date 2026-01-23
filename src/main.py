@@ -163,16 +163,13 @@ class GameController:
                 self._process_human_click(event.pos)
 
     def _process_human_click(self, pos):
-        mouseX, mouseY = pos
-        if (
-            self.renderer.board_offset_x <= mouseX < self.renderer.board_offset_x + BOARD_WIDTH
-            and mouseY > BOARD_OFFSET_Y
-        ):
-            clicked_row = (mouseY - BOARD_OFFSET_Y) // SQUARE_SIZE
-            clicked_col = (mouseX - self.renderer.board_offset_x) // SQUARE_SIZE
+        # El componente tablero ahora sabe traducir la posición del mouse
+        move = self.renderer.board_view.get_cell_from_mouse(pos)
 
-            if 0 <= clicked_row < BOARD_ROWS and 0 <= clicked_col < BOARD_COLS:
-                self.board.make_move(clicked_row, clicked_col)
+        if move:
+            row, col = move
+            if self.board.is_valid_move(row, col):
+                self.board.make_move(row, col)
 
     def update(self):
         if self.state == GameState.PLAYING:
@@ -235,44 +232,26 @@ class GameController:
         is_h_vs_h = self.player_types == [PlayerType.HUMAN, PlayerType.HUMAN]
         self.renderer.set_centered(is_h_vs_h)
 
-        should_invert = (
-            len(self.player_types) == 2
-            and self.player_types[1] == PlayerType.HUMAN
-            and self.player_types[0] != PlayerType.HUMAN
-        )
+        should_invert = self.player_types[1] == PlayerType.HUMAN and self.player_types[0] != PlayerType.HUMAN
         self.renderer.set_inverted(should_invert)
 
-        self.renderer.draw_grid()
-        self.renderer.draw_symbols(self.board.board)
-        self.renderer.draw_decision_graph(self.last_graph_data)
-
-        real_current_player = self.player_types[self.board.turn - 1]
-        label = "HUMAN" if real_current_player == PlayerType.HUMAN else "IA"
-        self.renderer.draw_turn_indicator(self.board.turn, label)
+        self.renderer.draw_game(board=self.board, player_types=self.player_types, ai_tree=self.last_graph_data)
 
         current_player = self.player_types[self.board.turn - 1]
         if not self.board.game_over and current_player == PlayerType.HUMAN:
             self._draw_ghost_symbol()
-
-        if self.board.game_over:
-            self.renderer.draw_win_line(self.board)
-            self.renderer.draw_game_over_text(self.board)
 
         if self.waiting_for_step:
             self._draw_step_prompt()
 
     def _draw_ghost_symbol(self):
         mouse_pos = pygame.mouse.get_pos()
-        mouseX, mouseY = mouse_pos
-        if (
-            self.renderer.board_offset_x <= mouseX < self.renderer.board_offset_x + BOARD_WIDTH
-            and mouseY > BOARD_OFFSET_Y
-        ):
-            row = (mouseY - BOARD_OFFSET_Y) // SQUARE_SIZE
-            col = (mouseX - self.renderer.board_offset_x) // SQUARE_SIZE
-            if 0 <= row < BOARD_ROWS and 0 <= col < BOARD_COLS:
-                if self.board.is_valid_move(row, col):
-                    self.renderer.draw_ghost_symbol(row, col, self.board.turn)
+        move = self.renderer.board_view.get_cell_from_mouse(mouse_pos)
+
+        if move is not None:
+            row, col = move
+            if self.board.is_valid_move(row, col):
+                self.renderer.draw_ghost_symbol(row, col, self.board.turn)
 
     def _draw_step_prompt(self):
         font = pygame.font.Font(None, 30)
