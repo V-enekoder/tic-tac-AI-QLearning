@@ -1,12 +1,15 @@
+import os
 import sys
 import time
 from enum import Enum
 
 import pygame
 
+from src.ai.gym import train
 from src.ai.minimax import (
     find_best_move_and_viz,
 )
+from src.ai.qlearning import QLearningAgent
 from src.config import *
 from src.game_logic.board import Board
 from src.gui.renderer import Renderer
@@ -53,6 +56,8 @@ class GameController:
 
         self.menu_rects = []
 
+        self.q_agent = self._setup_q_agent()
+
     def run(self):
         while self.running:
             self.handle_events()
@@ -62,6 +67,20 @@ class GameController:
 
         pygame.quit()
         sys.exit()
+
+    def _setup_q_agent(self):
+        agent = QLearningAgent(epsilon=0)
+        model_path = "models/q_table.pkl"
+
+        if os.path.exists(model_path):
+            print("Cargando modelo Q-Learning existente...")
+            agent.load_model(model_path)
+        else:
+            print("Entrenando nuevo agente Q-Learning (espera unos segundos)...")
+            agent = train(episodes=50000)
+            agent.save_model(model_path)
+            agent.epsilon = 0
+        return agent
 
     def handle_events(self):
         events = pygame.event.get()
@@ -132,6 +151,9 @@ class GameController:
             self.state = GameState.AI_SELECTION
         elif sel == 3:  # IA v IA
             self.start_game([PlayerType.AI_FAST, PlayerType.AI_SLOW])
+        elif sel == 4:  # Humano vs QLearning
+            self.ai_speed_selected = PlayerType.AI_QL
+            self.state = GameState.AI_SELECTION
 
     def _confirm_ai_selection(self):
         p1 = PlayerType.HUMAN
@@ -178,22 +200,19 @@ class GameController:
         if not self.board.game_over and current_player in [
             PlayerType.AI_SLOW,
             PlayerType.AI_FAST,
+            PlayerType.AI_QL,
         ]:
             self._execute_ai_turn(current_player)
 
     def _execute_ai_turn(self, ai_type):
         self.draw()
-        start_time = time.time()
-
-        print(f"Turno {self.board.turn} ({ai_type}): Pensando...")
-
-        use_alpha_beta = ai_type == PlayerType.AI_FAST
-
-        move, tree_data = find_best_move_and_viz(self.board, use_alpha_beta=use_alpha_beta)
-
-        self.last_graph_data = tree_data
-
-        print(f"Cálculo completado en: {time.time() - start_time:.4f}s")
+        if ai_type == PlayerType.AI_QL:
+            move = self.q_agent.choose_action(self.board)
+            self.last_graph_data = []
+        else:
+            use_alpha_beta = ai_type == PlayerType.AI_FAST
+            move, tree_data = find_best_move_and_viz(self.board, use_alpha_beta=use_alpha_beta)
+            self.last_graph_data = tree_data
 
         if move:
             self.board.make_move(move[0], move[1])

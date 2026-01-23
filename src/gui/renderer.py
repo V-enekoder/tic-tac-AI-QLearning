@@ -86,6 +86,7 @@ class Renderer:
         if board.game_over:
             self.hud_view.draw_win_line(self.screen, self.board_view, board)
             self.hud_view.draw_game_over(self.screen, self.screen.get_rect(), board)
+        # self.graph_view.draw(self.screen, ai_tree, self.inverted_symbols)
 
     def draw_step_prompt(self):
         """Interfaz para el mensaje de espera de la IA."""

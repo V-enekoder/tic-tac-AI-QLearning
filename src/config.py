@@ -39,3 +39,4 @@ class PlayerType:
     HUMAN = "HUMAN"
     AI_SLOW = "AI_SLOW"
     AI_FAST = "AI_FAST"
+    AI_QL = "AI_QL"

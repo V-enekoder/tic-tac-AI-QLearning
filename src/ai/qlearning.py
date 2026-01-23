@@ -52,7 +52,13 @@ class QLearningAgent:
         # Fórmula de actualización: Q(s,a) = Q(s,a) + alpha * (recompensa + gamma * maxQ(s',a') - Q(s,a))
         self.q_table[(state, action)] = old_q + self.alpha * (target - old_q)
 
-    def save_model(self, filename="q_table.pkl"):
+    def save_model(self, filename="models/q_table.pkl"):
+        import os
+
+        directory = os.path.dirname(filename)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory)
+
         with open(filename, "wb") as f:
             pickle.dump(self.q_table, f)
 
