@@ -1,6 +1,6 @@
 import pygame
 
-from src.config import BG_COLOR, CIRCLE_COLOR, CROSS_COLOR, FONT_COLOR, HEIGHT, LINE_WIDTH, WIDTH, WIN_LINE_COLOR
+from src.config import BG_COLOR, CIRCLE_COLOR, CROSS_COLOR, FONT_COLOR, LINE_WIDTH, WIN_LINE_COLOR
 
 
 class HUDComponent:
