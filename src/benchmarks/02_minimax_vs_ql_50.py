@@ -43,11 +43,11 @@ def run_tournament():
 
     for path in model_files:
         name = os.path.basename(path)
-        w, l, d = evaluate_model(path)
+        wins, loses, draws = evaluate_model(path, 50)
 
-        efficiency = ((w + d) / (w + l + d)) * 100
+        efficiency = ((wins + draws) / (wins + loses + draws)) * 100
 
-        print(f"{name:<25} | {w:<3} | {l:<3} | {d:<3} | {efficiency:>8.1f}%")
+        print(f"{name:<25} | {wins:<3} | {loses:<3} | {draws:<3} | {efficiency:>8.1f}%")
 
 
 if __name__ == "__main__":

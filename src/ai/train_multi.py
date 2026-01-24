@@ -1,7 +1,6 @@
 import os
 
 from src.ai.gym import train
-from src.ai.qlearning import QLearningAgent
 
 
 def generate_models():
