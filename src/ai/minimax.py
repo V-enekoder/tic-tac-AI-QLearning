@@ -190,8 +190,6 @@ def get_focused_tree(
         }
 
     for move in moves:
-        # Aquí seguimos usando deepcopy porque esta función
-        # se ejecuta pocas veces (solo para visualización)
         temp_board = deepcopy(board)
         temp_board.make_move(move[0], move[1])
 
@@ -240,10 +238,8 @@ def get_focused_tree(
             child_node["move"] = cand["move"]
             node["children"].append(child_node)
         else:
-            # --- EL ERROR ESTABA AQUÍ ---
             leaf_node = {
                 "score": cand["score"],
-                # Extraemos la matriz (.board) y la copiamos ([row[:]])
                 "board_matrix": [row[:] for row in cand["board"].board],
                 "children": [],
                 "is_chosen": False,
