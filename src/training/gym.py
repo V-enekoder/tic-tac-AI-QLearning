@@ -2,13 +2,15 @@ import os
 import pickle
 import random
 
+from src.benchmarks.utils import evaluate_vs_minimax
 from src.game_logic.board import Board
 
 
-def train_with_decay(agent, episodes=20000, minimax_ratio=0.2, pickle_path="tictactoe_lookup.pkl"):
+def train_with_decay(
+    agent, episodes=20000, minimax_ratio=0.2, pickle_path="tictactoe_lookup.pkl", epsilon_decay_gen=None
+):
     """
     Entrena un agente QLearning usando la tabla precomputada como oponente maestro
-    en lugar de calcular Minimax en cada paso.
     """
     if not os.path.exists(pickle_path):
         print(f"Error: No se encontró {pickle_path}. Usando Minimax real como fallback.")
@@ -16,17 +18,24 @@ def train_with_decay(agent, episodes=20000, minimax_ratio=0.2, pickle_path="tict
     else:
         with open(pickle_path, "rb") as f:
             lookup_table = pickle.load(f)
-        print("Tabla cargada. Iniciando entrenamiento acelerado...")
+        # print("Tabla cargada. Iniciando entrenamiento acelerado...")
 
     board = Board()
     agent.epsilon = 1.0
+    episodes_to_optimal = episodes
+    optimal_threshold = 50 * 0.98
+
+    if epsilon_decay_gen is None:
+        decay_factor = 1.0 / episodes
+    else:
+        decay_factor = epsilon_decay_gen
 
     for episode in range(episodes):
         board.reset()
 
         is_playing_master = random.random() < minimax_ratio
 
-        agent.epsilon = max(0.01, 1.0 - (episode / episodes))
+        agent.epsilon = max(0.01, agent.epsilon - decay_factor)
 
         history = {1: None, 2: None}
 
@@ -84,5 +93,11 @@ def train_with_decay(agent, episodes=20000, minimax_ratio=0.2, pickle_path="tict
                     current_board_state = agent.get_state_key(board.board)
                     agent.learn(prev_state, prev_action, 0, current_board_state, board.get_available_moves(), False)
 
+        if episode % 100 == 0:
+            wins, _, draws = evaluate_vs_minimax(agent, num_games=10)
+            if (wins + draws) / 10.0 >= 1.0:
+                episodes_to_optimal = episode
+                break
+
     agent.epsilon = 0.01
-    return agent
+    return agent, episodes_to_optimal
