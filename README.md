@@ -1,76 +1,54 @@
-# Agente de Tres en Raya con Algoritmo Minimax
 
-Este repositorio contiene el desarrollo de un agente inteligente capaz de jugar al "Tres en Raya" (Tic-Tac-Toe) contra un oponente humano. El proyecto utiliza el algoritmo **Minimax** para la toma de decisiones y **Pygame** para la interfaz gráfica.
+# Meta-Optimización de Q-Learning: La Carrera a la Perfección
+
+Este repositorio contiene un estudio avanzado de Aprendizaje por Refuerzo (Reinforcement Learning) aplicado al "Tres en Raya". El objetivo no es solo crear un agente inteligente, sino encontrar los parámetros de aprendizaje ($\alpha$ y $\gamma$) más eficientes mediante **Grid Search** y **Algoritmos Genéticos**, evaluándolos a través de un sistema de **Rating Elo**.
 
 **Materia:** Inteligencia Artificial  
 **Institución:** Universidad Nacional Experimental de Guayana (UNEG)  
 **Profesor:** Manuel Paniccia  
-**Fecha de entrega:** 10 de Diciembre de 2025
+**Fecha de entrega:** 31 de Enero de 2026
+
+---
+
+## 🔬 Descripción del Proyecto
+
+A diferencia de un enfoque tradicional (Minimax), este proyecto implementa **Q-Learning Tabular** donde el agente aprende desde cero a través de la experiencia. El núcleo del proyecto es la comparación de agentes mediante un torneo genético, para obtener los mejores hiperparámetros de entrenamiento.
 
 ---
 
 ## 🛠️ Tecnologías y Entorno
 
-El proyecto está contenerizado para garantizar que funcione en cualquier máquina Linux sin problemas de dependencias.
+El proyecto está contenerizado para garantizar consistencia en cualquier entorno Linux (probado en Linux Mint / Fedora).
 
 - **Lenguaje:** Python 3.12+
 - **Gestor de Paquetes:** `uv` (Astral)
-- **Interfaz Gráfica:** Pygame
+- **Interfaz Gráfica:** Pygame (para visualización de duelos)
 - **Cálculo Matemático:** Numpy
 - **Contenerización:** Podman + Podman Compose
 - **Calidad de Código:** Ruff
-
----
-
-Claro, aquí tienes la sección `## 🚀 Instalación y Ejecución` del `README.md` completamente actualizada para reflejar el uso del `Makefile`. Es mucho más limpia y fácil de seguir.
+- **Persistencia:** Pickle (para almacenamiento de Q-Tables)
 
 ---
 
 ## 🚀 Instalación y Ejecución
 
 ### Prerrequisitos
--   Tener instalado `podman` y `podman-compose` en un sistema Linux.
--   Tener `make` instalado (generalmente viene por defecto).
+- Tener instalado `podman` y `podman-compose`.
+- Tener `make` instalado.
 
-### 1. Configuración Inicial (Solo la primera vez)
+### 1. Configuración Inicial
+```bash
+git clone https://github.com/V-enekoder/qlearning-tictactoe.git
+cd qlearning-tictactoe
+make build
+```
 
-1.  **Clonar el repositorio:**
-    ```bash
-    git clone https://github.com/V-enekoder/tic-tac-AI.git
-    cd agente-minimax-tictactoe
-    ```
-
-2.  **Construir el entorno:**
-    Este único comando construirá la imagen de Podman, levantará el contenedor e instalará todas las dependencias necesarias.
-    ```bash
-    make build
-    ```
-
-### 2. Flujo de Trabajo Diario
-
--   **Ejecutar el Juego:**
-    Este comando se encarga de dar los permisos a la pantalla y lanzar la aplicación.
-    ```bash
-    make run
-    ```
-
--   **Entrar al contenedor (Shell):**
-    Para depurar o ejecutar comandos manualmente.
-    ```bash
-    make shell
-    ```
-
--   **Detener el entorno:**
-    Apaga y elimina el contenedor.
-    ```bash
-    make stop
-    ```
-
--   **Ver todos los comandos disponibles:**
-    Muestra una lista de todos los atajos y su descripción.
-    ```bash
-    make
-    ```
+### 2. Comandos del Makefile
+- **`make run`**: Ejecuta la interfaz gráfica y el duelo de campeones.
+- **`make train`**: Lanza el proceso de Grid Search y Algoritmo Genético.
+- **`make tournament`**: Ejecuta el torneo de Elo entre los agentes guardados.
+- **`make shell`**: Acceso directo al contenedor.
+- **`make stop`**: Detiene y limpia los contenedores.
 
 ---
 
@@ -78,36 +56,49 @@ Claro, aquí tienes la sección `## 🚀 Instalación y Ejecución` del `README.
 
 ```text
 /
-├── compose.yml       # Configuración del contenedor y volúmenes
-├── Dockerfile        # Definición de la imagen de sistema (Python + SDL)
-├── pyproject.toml    # Dependencias del proyecto (uv)
-├── ruff.toml         # Configuración de linter
-├── README.md         # Documentación
+├── compose.yml           # Configuración de Podman y X11
+├── Dockerfile            # Imagen base (Python + dependencias SDL)
+├── pyproject.toml        # Dependencias (Numpy, Pygame, etc.)
+├── Makefile              # Atajos de ejecución
+├── models/               # Almacenamiento de Q-Tables (.pkl)
 └── src/
-    └── main.py       # Punto de entrada y lógica del juego
+    ├── agent.py          # Clase QLearner y lógica de Bellman
+    ├── minimax.py        # Agente perfecto para evaluación
+    ├── genetic.py        # Lógica del Algoritmo Genético
+    ├── dashboard.py      # Generación de gráficas de aprendizaje
+    └── main.py           # Interfaz visual y ejecución principal
 ```
+
+---
+
+## 📊 Métricas de Evaluación
+
+El éxito de los agentes se mide bajo tres criterios:
+1.  **Punto de Perfección ($P_0$):** Número de partidas necesarias para dejar de perder contra Minimax.
+2.  **Rating Elo:** Puntaje relativo de fuerza entre las distintas configuraciones de agentes.
+3.  **Estabilidad de Convergencia:** Capacidad del agente para mantener el nivel óptimo tras alcanzarlo.
+
 ---
 
 ## 🔧 Solución de Problemas Comunes
 
-### 1. `ModuleNotFoundError: No module named 'numpy'`
-**Causa:** El volumen montado desde el host sobrescribió la carpeta `.venv` del contenedor.
-**Solución:** Ejecuta `podman exec -it tictactoe_dev uv sync` para reinstalar las librerías en el volumen compartido.
-
-### 2. `pygame.error: No video mode has been set` o Pantalla negra
-**Causa:** El contenedor no tiene permiso para pintar en tu pantalla.
-**Solución:**
-1. Asegúrate de haber ejecutado `xhost +local:` en tu terminal host.
-2. Verifica que la variable `DISPLAY` se esté pasando en el `compose.yml`.
-
-### 3. `Error: no space left on device`
-**Causa:** Podman Rootless llenó el espacio asignado en `/home` debido a múltiples builds fallidos.
-**Solución:**
-1. Limpiar imágenes basura: `podman system prune -a --volumes`.
-2. Verificar espacio en disco con `df -h`.
-
-### 4. `Error: short-name "..." did not resolve`
-**Causa:** Falló el `build` de la imagen, por lo que Podman intenta buscarla en internet y falla.
-**Solución:** Revisa los errores del Dockerfile y corre `podman-compose up -d --build` hasta que termine con éxito.
+### 1. Error de Display (Pygame)
+Si al ejecutar `make run` obtienes un error de video, asegúrate de habilitar el acceso a X11 en el host:
+```bash
+xhost +local:
 ```
-    └── main.py             # El director de orquesta
+
+### 2. Sincronización de dependencias
+Si notas que faltan librerías dentro del contenedor tras actualizar el `pyproject.toml`:
+```bash
+podman exec -it qlearning_dev uv sync
+```
+
+### 3. Persistencia de Modelos
+Los modelos se guardan en la carpeta `models/`. Si deseas resetear el entrenamiento, vacía esta carpeta antes de ejecutar el proceso de entrenamiento.
+```bash
+rm models/*.pkl
+```
+5.  **Comandos:** Añadí `make train` y `make tournament` como sugerencia para separar el entrenamiento de la visualización.
+
+¡Mucho éxito con este nuevo enfoque! Es un salto de calidad enorme respecto al Minimax tradicional.
