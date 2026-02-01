@@ -1,7 +1,7 @@
 
 # Meta-Optimización de Q-Learning: La Carrera a la Perfección
 
-Este repositorio contiene un estudio avanzado de Aprendizaje por Refuerzo (Reinforcement Learning) aplicado al "Tres en Raya". El objetivo no es solo crear un agente inteligente, sino encontrar los parámetros de aprendizaje ($\alpha$ y $\gamma$) más eficientes mediante **Grid Search** y **Algoritmos Genéticos**, evaluándolos a través de un sistema de **Rating Elo**.
+Este repositorio contiene un estudio avanzado de Aprendizaje por Refuerzo (Reinforcement Learning) aplicado al "Tres en Raya". El objetivo no es solo crear un agente inteligente, sino encontrar los parámetros de aprendizaje ($\alpha$ y $\gamma$) más eficientes mediante  **Algoritmos Genéticos**, evaluándolos a través de una función fitness que combina velocivdad y calidad de juego.
 
 **Materia:** Inteligencia Artificial  
 **Institución:** Universidad Nacional Experimental de Guayana (UNEG)  
