@@ -11,13 +11,12 @@ def evaluate_vs_minimax(ql_agent: QLearningAgent, num_games=20, pickle_path="tic
     Evalúa el rendimiento de un agente Q-Learning contra un agente Minimax perfecto.
     Usa la tabla precomputada para mayor velocidad y recurre al minimax real si es necesario.
     """
-    # 1. Intentar cargar la tabla
     lookup_table = None
     if os.path.exists(pickle_path):
         with open(pickle_path, "rb") as f:
             lookup_table = pickle.load(f)
 
-    ql_agent.epsilon = 0.01
+    ql_agent.epsilon = 0
     wins, losses, draws = 0, 0, 0
 
     for i in range(num_games):
