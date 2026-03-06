@@ -2,11 +2,10 @@ name: Build & Auto-Release
 
 on:
   push:
-    branches: ["main"] # Se ejecuta en cada cambio a main
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la web
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
-  # 1. CONSTRUCCIÓN (Windows y Linux)
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -15,7 +14,7 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: TicTacToeAI_Linux
-            exe_name: TicTacToeAI
+            exe_name: tictactoe-ai
           - os: windows-latest
             artifact_name: TicTacToeAI_Windows
             exe_name: TicTacToeAI.exe
@@ -28,29 +27,54 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install dependencies
-        run: uv sync
+      - name: Install uv and dependencies
+        run: |
+          pip install uv
+          uv sync
 
       - name: Build with PyInstaller
-        # Construye el ejecutable
         run: |
-          uv run pyinstaller --noconfirm --onefile --windowed --name "TicTacToeAI" --clean --add-data "src${{ runner.os == 'Windows' && ';' || ':' }}src" src/main.py
+          # Nota: Agregamos tictactoe_lookup.pkl a la raíz del paquete
+          uv run pyinstaller --noconfirm --onefile --windowed \
+            --name "${{ matrix.exe_name }}" \
+            --clean \
+            --add-data "src${{ runner.os == 'Windows' && ';' || ':' }}src" \
+            --add-data "tictactoe_lookup.pkl${{ runner.os == 'Windows' && ';' || ':' }}." \
+            src/main.py
+
+      - name: Create Debian Package
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p package/usr/bin
+          mkdir -p package/DEBIAN
+          cp dist/tictactoe-ai package/usr/bin/
+
+          # Crear archivo de control para el .deb
+          cat <<EOF > package/DEBIAN/control
+          Package: tictactoe-ai
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Victor <tu@email.com>
+          Description: TicTacToe AI con Q-Learning
+          EOF
+
+          dpkg-deb --build package tictactoe-ai.deb
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/${{ matrix.exe_name }}
+          path: |
+            dist/${{ matrix.exe_name }}
+            *.deb
 
-  # 2. PUBLICACIÓN AUTOMÁTICA (Release "Nightly")
   update_release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Permiso para crear releases
+      contents: write
     steps:
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
@@ -58,21 +82,14 @@ jobs:
           pattern: TicTacToeAI_*
           merge-multiple: true
 
-      # Opcional: Listar archivos para depurar si falla
-      - name: List files (Debug)
-        run: ls -R
-
       - name: Update Nightly Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
           name: "Development Build (Nightly)"
-          body: |
-            Build automático más reciente.
-            Commit: ${{ github.sha }}
-            Fecha: ${{ github.event.head_commit.timestamp }}
           files: |
             TicTacToeAI.exe
-            TicTacToeAI
+            tictactoe-ai
+            tictactoe-ai.deb
           prerelease: true
           make_latest: true

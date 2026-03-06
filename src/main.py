@@ -73,17 +73,17 @@ class GameController:
 
     def _setup_q_agent(self):
         agent = QLearningAgent(epsilon=0)
-        model_path = "src/models/q_table.pkl"
+        model_path = get_writable_path("q_table.pkl")
+
+        lookup_path = get_resource_path("tictactoe_lookup.pkl")
 
         if os.path.exists(model_path):
-            print("Cargando modelo Q-Learning existente...")
+            print(f"Cargando modelo en: {model_path}")
             agent.load_model(model_path)
         else:
-            print("Entrenando nuevo agente Q-Learning (espera unos segundos)...")
-
-            agent, _ = train_with_decay(QLearningAgent(), episodes=50000)
+            print("Entrenando nuevo agente...")
+            agent, _ = train_with_decay(QLearningAgent(), episodes=50000, pickle_path=lookup_path)
             agent.save_model(model_path)
-            agent.epsilon = 0
         return agent
 
     def handle_events(self):
