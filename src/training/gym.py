@@ -2,6 +2,8 @@ import os
 import pickle
 import random
 
+import pygame
+
 from src.benchmarks.utils import evaluate_vs_minimax
 from src.game_logic.board import Board
 
@@ -107,6 +109,7 @@ def train_with_decay(
                     agent.learn(s, a, -1, None, [], True)
 
         if episode % 200 == 0 and episode > 1000:
+            pygame.event.pump()
             n_test = 100
             wins, losses, draws = evaluate_vs_minimax(agent, num_games=n_test)
 
