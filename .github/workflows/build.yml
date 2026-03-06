@@ -15,9 +15,11 @@ jobs:
           - os: ubuntu-latest
             artifact_name: TicTacToeAI_Linux
             exe_name: tictactoe-ai
+            sep: ":"
           - os: windows-latest
             artifact_name: TicTacToeAI_Windows
-            exe_name: TicTacToeAI.exe
+            exe_name: TicTacToeAI
+            sep: ";"
 
     steps:
       - uses: actions/checkout@v4
@@ -33,23 +35,24 @@ jobs:
           uv sync
 
       - name: Build with PyInstaller
+        # Forzamos bash para que el comando funcione igual en Windows y Linux
+        shell: bash
         run: |
-          # Nota: Agregamos tictactoe_lookup.pkl a la raíz del paquete
           uv run pyinstaller --noconfirm --onefile --windowed \
             --name "${{ matrix.exe_name }}" \
             --clean \
-            --add-data "src${{ runner.os == 'Windows' && ';' || ':' }}src" \
-            --add-data "tictactoe_lookup.pkl${{ runner.os == 'Windows' && ';' || ':' }}." \
+            --add-data "src${{ matrix.sep }}src" \
+            --add-data "tictactoe_lookup.pkl${{ matrix.sep }}." \
             src/main.py
 
+      # --- ESPECÍFICO PARA LINUX: CREAR .DEB ---
       - name: Create Debian Package
         if: matrix.os == 'ubuntu-latest'
         run: |
           mkdir -p package/usr/bin
           mkdir -p package/DEBIAN
-          cp dist/tictactoe-ai package/usr/bin/
+          cp "dist/${{ matrix.exe_name }}" package/usr/bin/
 
-          # Crear archivo de control para el .deb
           cat <<EOF > package/DEBIAN/control
           Package: tictactoe-ai
           Version: 1.0.0
@@ -67,7 +70,7 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            dist/${{ matrix.exe_name }}
+            dist/${{ matrix.exe_name }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
             *.deb
 
   update_release:
@@ -77,7 +80,13 @@ jobs:
       contents: write
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/upload-artifact@v4
+        with:
+          name: TicTacToeAI_All # Descarga todos con este patrón si es posible o uno por uno
+        continue-on-error: true
+
+      # Para simplificar la descarga en el release final:
+      - uses: actions/download-artifact@v4
         with:
           pattern: TicTacToeAI_*
           merge-multiple: true
